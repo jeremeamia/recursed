@@ -1,0 +1,20 @@
+{
+    "name": "jeremeamia/recursed",
+    "description": "Using recursion to look for recursion in code.",
+    "require": {
+        "nikic/php-parser": "dev-master"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Jeremy Lindblom",
+            "email": "jeremeamia@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "autoload": {
+        "psr-4": {
+            "Recursed\\": "src/"
+        }
+    }
+}
