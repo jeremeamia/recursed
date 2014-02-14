@@ -60,7 +60,7 @@ class RecursiveCallFinderNodeVisitor extends NodeVisitorAbstract
             if ($name && !$this->nodeStack->isEmpty()) {
                 $scopeNode = $this->nodeStack->top();
                 // If the function being called is the same as the function being defined, then it's recursive
-                if ($scopeNode instanceof FuncNode && $scopeNode->name = $name) {
+                if ($scopeNode instanceof FuncNode && $scopeNode->name === $name) {
                     $this->recursiveCalls[] = new RecursiveCall($node, $this->nodeStack->top(), $this->file);
                 }
             }
