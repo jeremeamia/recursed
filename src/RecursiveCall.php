@@ -5,20 +5,23 @@ namespace Recursed;
 use PhpParser\Node;
 use SplFileInfo;
 
+/**
+ * Value object representing a recursive call.
+ */
 class RecursiveCall
 {
     /**
-     * @var Node
+     * @var Node The node in the AST representing the code where the recursive function is declared
      */
     private $declarationNode;
 
     /**
-     * @var Node
+     * @var Node The node in the AST representing the code of the recursive call
      */
     private $usageNode;
 
     /**
-     * @var SplFileInfo
+     * @var SplFileInfo The file containing the recursive call
      */
     private $file;
 

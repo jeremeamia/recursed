@@ -10,6 +10,9 @@ use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use SplFileInfo;
 
+/**
+ * The main class in Recursed used to find instances of recursive calls.
+ */
 class RecursiveCallFinder
 {
     /**

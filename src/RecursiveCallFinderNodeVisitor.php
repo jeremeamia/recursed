@@ -4,9 +4,9 @@ namespace Recursed;
 
 use PhpParser\Node\Expr\Assign as AssignNode;
 use PhpParser\Node\Expr\Closure as ClosureNode;
-use PhpParser\Node\Expr\FuncCall as FuncCallNode;
-use PhpParser\Node\Expr\MethodCall as MethodCallNode;
-use PhpParser\Node\Expr\StaticCall as StaticCallNode;
+use PhpParser\Node\Expr\FuncCall as FuncCallerNode;
+use PhpParser\Node\Expr\MethodCall as MethodCallerNode;
+use PhpParser\Node\Expr\StaticCall as StaticCallerNode;
 use PhpParser\Node\Stmt\ClassMethod as MethodNode;
 use PhpParser\Node\Stmt\Function_ as FuncNode;
 use PhpParser\Node;
@@ -14,6 +14,11 @@ use PhpParser\NodeVisitorAbstract;
 use SplFileInfo;
 use SplStack;
 
+/**
+ * A visitor object that identifies recursive calls as the AST of the PHP code is traversed.
+ *
+ * @package Recursed
+ */
 class RecursiveCallFinderNodeVisitor extends NodeVisitorAbstract
 {
     /**
@@ -55,36 +60,11 @@ class RecursiveCallFinderNodeVisitor extends NodeVisitorAbstract
             $node->name = $node->var->name;
             $this->nodeStack->push($node);
         // Determine if a function or method call is recursive
-        } elseif ($node instanceof FuncCallNode) {
-            $name = $this->getNodeName($node);
-            if ($name && !$this->nodeStack->isEmpty()) {
-                $scopeNode = $this->nodeStack->top();
-                // If the function being called is the same as the function being defined, then it's recursive
-                if ($scopeNode instanceof FuncNode && $scopeNode->name === $name) {
-                    $this->recursiveCalls[] = new RecursiveCall($node, $this->nodeStack->top(), $this->file);
-                }
-            }
-        } elseif ($node instanceof MethodCallNode) {
-            $name = $this->getNodeName($node);
-            if ($name && !$this->nodeStack->isEmpty()) {
-                $scopeNode = $this->nodeStack->top();
-                // If the method being called is the same as the method being defined, then it's recursive
-                // Note: Only accept method calls if the method is being called on $this
-                if ($scopeNode instanceof MethodNode && $scopeNode->name === $name && $node->var->name === 'this') {
-                    $this->recursiveCalls[] = new RecursiveCall($node, $this->nodeStack->top(), $this->file);
-                }
-            }
-        } elseif ($node instanceof StaticCallNode) {
-            $name = $this->getNodeName($node);
-            if ($name && !$this->nodeStack->isEmpty()) {
-                $scopeNode = $this->nodeStack->top();
-                // If the method being called is the same as the method being defined, then it's recursive
-                // Note: Only accept method calls if the method is being called on self or static
-                $className = $node->class->parts[0];
-                if ($scopeNode instanceof MethodNode && $scopeNode->name === $name && ($className === 'self' || $className === 'static')) {
-                    $this->recursiveCalls[] = new RecursiveCall($node, $this->nodeStack->top(), $this->file);
-                }
-            }
+        } elseif ($node instanceof FuncCallerNode
+            || $node instanceof MethodCallerNode
+            || $node instanceof StaticCallerNode
+        ) {
+            $this->handleCallerNode($node);
         }
     }
 
@@ -105,20 +85,52 @@ class RecursiveCallFinderNodeVisitor extends NodeVisitorAbstract
     }
 
     /**
-     * @param Node $node
-     *
-     * @return null|string
+     * @param Node $callerNode
      */
-    private function getNodeName(Node $node)
+    private function handleCallerNode(Node $callerNode)
     {
-        if (isset($node->name)) {
-            if (isset($node->name->parts)) {
-                return $node->name->parts[0];
-            } else {
-                return is_string($node->name) ? $node->name : $node->name->name;
-            }
+        // If the caller node does not have a name or there is no context node, it's definitely not recursive
+        // NOTE: Caller nodes may not have a name if they represent closures that were not assigned to a variable
+        // NOTE: There will be no context node if the function call occurs outside of a method/function declaration
+        if (!isset($callerNode->name) || $this->nodeStack->isEmpty()) {
+            return;
+        }
+
+        // Determine the context node by looking at the stack
+        $contextNode = $this->nodeStack->top();
+
+        // Determine the caller node's name
+        if (isset($callerNode->name->parts)) {
+            // NOTE: This makes some blind assumptions on how `parts` is structured, but it works for now
+            $callerNodeName = $callerNode->name->parts[0];
         } else {
-            return null;
+            // Handle the name whether it is a string or a Name node
+            $callerNodeName = is_string($callerNode->name) ? $callerNode->name : $callerNode->name->name;
+        }
+
+        // Handle each type of caller node
+        $isRecursive = false;
+        if ($callerNode instanceof FuncCallerNode) {
+            // Ensure that the names of the functions being called and defined are the same
+            $isRecursive = $contextNode instanceof FuncNode && $contextNode->name === $callerNodeName;
+        } elseif ($callerNode instanceof MethodCallerNode) {
+            // Ensure that the names of the methods being called and defined are the same
+            $isRecursive = $contextNode instanceof MethodNode && $contextNode->name === $callerNodeName;
+            // Only accept method calls if the method is being called on `$this`
+            // NOTE: If the method is being called on a different or dynamic variable name, then this won't work
+            $isRecursive = $isRecursive && $callerNode->var->name === 'this';
+        } elseif ($callerNode instanceof StaticCallerNode) {
+            // Ensure that the names of the methods being called and defined are the same
+            $isRecursive = $contextNode instanceof MethodNode && $contextNode->name === $callerNodeName;
+            // Only accept method calls if the method is being called on `self` or `static`
+            $className = $callerNode->class->parts[0];
+            // NOTE: If the method is being called on a direct class name reference, then this won't work
+            $isRecursive = $isRecursive && ($className === 'self' || $className === 'static');
+        }
+
+        // Save the call node as a recursive call if the criteria was met for its type
+        if ($isRecursive) {
+            $this->recursiveCalls[] = new RecursiveCall($callerNode, $contextNode, $this->file);
         }
     }
 }

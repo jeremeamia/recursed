@@ -5,6 +5,9 @@ namespace Recursed;
 use PhpParser\PrettyPrinter\Standard as StandardNodePrinter;
 use PhpParser\PrettyPrinterAbstract as NodePrinter;
 
+/**
+ * Used to print the results of the RecursiveCallFinder.
+ */
 class RecursiveCallPrinter
 {
     /**
@@ -32,13 +35,22 @@ class RecursiveCallPrinter
     }
 
     /**
+     * Prints information about a single recursive call. Override to change format.
+     *
      * @param RecursiveCall $call
      */
     public function printSingleRecursiveCall(RecursiveCall $call)
     {
+        // Get the code for the recursive call, but strip out comment lines
+        $code = $this->nodePrinter->prettyPrint(array($call->getUsageNode()));
+        $code = implode("\n", array_filter(explode("\n", $code), function ($line) {
+            return !preg_match('#^[\t ]*//#', $line);
+        }));
+
+        // Create the output that indicates where the recursive call was found
         echo "LOCATED IN FILE: " . $call->getFile()->getRealPath() . "\n";
-        echo "DECLARED ON LINE #" . $call->getDeclarationNode()->getLine() . "\n";
-        echo "CALLED ON LINE #" . $call->getUsageNode()->getLine() . "\n";
-        echo "USAGE CODE:\n" . $this->nodePrinter->prettyPrint(array($call->getUsageNode())) . "\n\n";
+        echo "DECLARED ON LINE #" . $call->getDeclarationNode()->getLine() . " ";
+        echo "AND CALLED ON LINE #" . $call->getUsageNode()->getLine() . "\n";
+        echo "CALLING CODE: {$code}\n\n";
     }
 }

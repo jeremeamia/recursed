@@ -7,6 +7,10 @@ use ArrayIterator;
 use InvalidArgumentException;
 use Iterator;
 
+/**
+ * An iterator for RecursiveCall objects. Extends the AppendIterator to allow for easily joining sets of RecursiveCall
+ * objects discovered in multiple files.
+ */
 class RecursiveCallIterator extends AppendIterator
 {
     /**
