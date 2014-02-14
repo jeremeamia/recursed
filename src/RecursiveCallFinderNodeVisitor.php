@@ -67,7 +67,7 @@ class RecursiveCallFinderNodeVisitor extends NodeVisitorAbstract
         } elseif ($node instanceof MethodCallNode) {
             $name = $this->getNodeName($node);
             if ($name && !$this->nodeStack->isEmpty()) {
-            $scopeNode = $this->nodeStack->top();
+                $scopeNode = $this->nodeStack->top();
                 // If the method being called is the same as the method being defined, then it's recursive
                 // Note: Only accept method calls if the method is being called on $this
                 if ($scopeNode instanceof MethodNode && $scopeNode->name === $name && $node->var->name === 'this') {
