@@ -6,6 +6,7 @@ use PhpParser\Node\Expr\Assign as AssignNode;
 use PhpParser\Node\Expr\Closure as ClosureNode;
 use PhpParser\Node\Expr\FuncCall as FuncCallNode;
 use PhpParser\Node\Expr\MethodCall as MethodCallNode;
+use PhpParser\Node\Expr\StaticCall as StaticCallNode;
 use PhpParser\Node\Stmt\ClassMethod as MethodNode;
 use PhpParser\Node\Stmt\Function_ as FuncNode;
 use PhpParser\Node;
@@ -70,6 +71,17 @@ class RecursiveCallFinderNodeVisitor extends NodeVisitorAbstract
                 // If the method being called is the same as the method being defined, then it's recursive
                 // Note: Only accept method calls if the method is being called on $this
                 if ($scopeNode instanceof MethodNode && $scopeNode->name === $name && $node->var->name === 'this') {
+                    $this->recursiveCalls[] = new RecursiveCall($node, $this->nodeStack->top(), $this->file);
+                }
+            }
+        } elseif ($node instanceof StaticCallNode) {
+            $name = $this->getNodeName($node);
+            if ($name && !$this->nodeStack->isEmpty()) {
+                $scopeNode = $this->nodeStack->top();
+                // If the method being called is the same as the method being defined, then it's recursive
+                // Note: Only accept method calls if the method is being called on self or static
+                $className = $node->class->parts[0];
+                if ($scopeNode instanceof MethodNode && $scopeNode->name === $name && ($className === 'self' || $className === 'static')) {
                     $this->recursiveCalls[] = new RecursiveCall($node, $this->nodeStack->top(), $this->file);
                 }
             }
